@@ -1,0 +1,200 @@
+#!/bin/bash
+# Needs bash for $PIPESTATUS
+
+[ -z "$UPMFILE" ] && UPMFILE="${HOME}/test.txt.gpg"
+
+# die $EXITCODE $MESSAGE
+# Print a message and exit with a given exit code.
+die ()
+{
+    echo "$2" >&2
+    exit $1
+}
+
+# Remove first and last line and comment lines from the stream
+cleanup ()
+{
+    head -n -1 | tail -n +2 | grep -v '^#'
+}
+
+# Exit codes:
+#   0: record found, but no password
+#   1: password from 2 or 3 line record
+#   2: password from line 3 from record with >3 lines
+#   3: record not found
+get_password ()
+{
+    local PWKEY
+    PWKEY="$1"
+    cleanup | sed -n -E "
+        1 b match           # match first line
+        $ q 3               # match end of file
+        /^\s*$/ {
+            :eatws
+            n
+            /^\s*$/ b eatws
+            b match
+            }
+        /^\S+/ d
+        : match
+        /^${PWKEY}/ {
+            $ q 0
+            n
+            /^\s*$/ q 0         # empty line after key
+            h
+            n
+            /^\s*$/ b output    # only one non-empty line after key = password
+            h
+            n
+            /^\s*$/ b output    # empty line after 3rd line -> 3rd line = pw
+            /^.+/ b malformed   # more than three non-empty non-comment lines
+            :output
+            x
+            p
+            q 1
+            :malformed          # malformed record, output but change exit code
+            x
+            p
+            q 2
+        }
+        $ q 3" | tr -d '\n'
+    return ${PIPESTATUS[1]}
+}
+
+# Exit codes:
+#   0: record found, but no username
+#   1: username from a 3 line record
+#   2: username from line 3 from record with >3 lines
+#   3: record not found
+get_user ()
+{
+    local PWKEY
+    PWKEY="$1"
+    cleanup | sed -n -E "
+        1 b match           # match first line
+        $ q 3               # match end of file
+        /^\s*$/ {
+            :eatws
+            n
+            /^\s*$/ b eatws
+            b match
+            }
+        /^\S+/ d
+        : match
+        /^${PWKEY}/ {
+            $ q 0
+            n
+            h
+            /^\s*$/ q 0         # empty line after key
+            n
+            /^\s*$/ q 0         # empty line after key
+            n
+            /^\s*$/ b output    # two non-empty lines after key = ok
+            /^.+/ b malformed   # more than three non-empty non-comment lines
+            :output
+            x
+            p
+            q 1
+            :malformed          # malformed record, output but change exit code
+            x
+            p
+            q 2
+        }
+        $ q 3" | tr -d '\n'
+    return ${PIPESTATUS[1]}
+}
+
+# List lines with preceding empty (or only whitespace containing) lines
+# and at least one consecutive non-empty line.
+list_keys ()
+{
+    cleanup | sed -n -E "
+        1 { /^\S+.*$/ b count }   # match first line
+        /^\s*$/ {
+            :eatws
+            n
+            /^\s*$/ b eatws
+            b count
+        }
+        /^\S+.*$/ d
+        :count {
+            h
+            n
+            /^\s*$/ b eatws
+            x
+            p
+            d
+        }"
+}
+
+
+[ $# -le 4 ] && [ $# -ge 1 ] || die 1 "Wrong number of arguments"
+[ -f ${UPMFILE} ] || die 1 "Vault file '${UPMFILE}' not found."
+
+ACTION=get_password
+XCLIP_CMD="xclip -i"
+OUTPUT="$XCLIP_CMD"
+PASSPHRASE_ARGS=""
+while [ $# -gt 0 ] ; do
+    PAR=$1
+    case $PAR in
+        pass) # get password (default)
+            ACTION=get_password ;;
+        user) # get username
+            ACTION=get_user ;;
+        ls) # list keys
+            ACTION=list_keys
+            OUTPUT=cat ;;
+        -o) # output to stdout
+            OUTPUT=cat ;;
+        -c) # output to xclip (default)
+            OUTPUT="$XCLIP_CMD" ;;
+        -p) # get gpg passphrase from stdin
+            PASSPHRASE_ARGS="-q --batch --passphrase-fd 0"
+            if $(gpg --dump-options | grep -q pinentry-mode) ; then
+                PASSPHRASE_ARGS="${PASSPHRASE_ARGS} --pinentry-mode loopback"
+            fi
+            ;;
+        -*)
+            die 1 "Unknown option ${PAR}."
+            ;;
+        *)
+            KEY="$PAR" ;;
+    esac
+    shift
+done
+
+[ "$ACTION" != "list_keys" ] && [ -z "$KEY" ] \
+    && die 2 "No key given."
+[ "$ACTION" = "list_keys" ] && [ -n "$KEY" ] \
+    && die 2 "Key argument given with '$(basename $0) ls'."
+
+[ -n "$PASSPHRASE_ARGS" ] && echo -n "Enter vault passphrase: " >&2
+[ -t 0 ] && stty -echo
+declare -a GPG_EXIT
+gpg -d ${PASSPHRASE_ARGS} ${UPMFILE} 2> /dev/null \
+    | ${ACTION} "$KEY" \
+    | $OUTPUT
+PIPE_EXITS=("${PIPESTATUS[@]}")
+[ -n "$PASSPHRASE_ARGS" ] && echo "" >&2
+[ -t 0 ] && stty echo
+#echo ${PIPE_EXITS[@]}
+
+# check GPG exit status
+[ ${PIPE_EXITS[0]} -ne 0 ] && die 5 "gpg: decrypt failed."
+# check action exit status
+if [ ${PIPE_EXITS[1]} -eq 0 ] ; then
+    [ "$ACTION" = "get_password" ] \
+        && die 5 "no password found for key '$KEY'"
+    [ "$ACTION" = "get_user" ] \
+        && die 5 "no username found for key '$KEY'"
+fi
+[ ${PIPE_EXITS[1]} -eq 2 ] \
+    && echo "Warning: Extra lines in record for key '$KEY'" >&2
+[ ${PIPE_EXITS[1]} -eq 3 ] && die 5 "key '$KEY' not found"
+
+if [ "$OUTPUT" = "$XCLIP_CMD" ] ; then
+    echo "Output sent to clipboard." >&2
+else
+    [ "$ACTION" != "list_keys" ] && echo "" >&2
+fi
