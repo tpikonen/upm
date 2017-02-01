@@ -1,0 +1,76 @@
+#!/bin/bash
+
+CONFFILE="$HOME/.config/upm/upm.conf"
+
+# die $EXITCODE $MESSAGE
+# Print a message and exit
+die ()
+{
+    echo "$2" >&2
+    exit $1
+}
+
+# Places the input from stdin to clipboard with xclip. Removes the input
+# from clipboard after $CLEARTIME seconds and allows $PASTES pastes.
+xclip_output ()
+{
+    local CLEARTIME PASTES PWSHA
+    CLEARTIME=30
+    PASTES=2
+
+    PWSHA=$(cat | xclip -i -f -loops $PASTES | sha256sum)
+    ( sleep $CLEARTIME ; \
+        [ "$PWSHA" = "$(xclip -o | sha256sum)" ] && echo -n "" | xclip -i ) & \
+        disown
+}
+
+[ $# -le 4 ] && [ $# -ge 1 ] || die 1 "Wrong number of arguments"
+
+RCMD=pass
+OUTPUT="xclip_output"
+while [ $# -gt 0 ] ; do
+    PAR=$1
+    case $PAR in
+        pass) # get password (default)
+            RCMD=pass ;;
+        user) # get username
+            RCMD=user ;;
+        ls) # get username
+            RCMD=ls
+            OUTPUT=cat ;;
+        -h) # remote host
+            RUPM_HOST="$PAR" ;;
+        -b) # remote command
+            REMOTE_UPM_BIN="$PAR" ;;
+        -o) # output to stdout
+            OUTPUT=cat ;;
+        -c) # output to xclip (default)
+            OUTPUT="xclip_output" ;;
+        -*)
+            die 1 "Unknown option ${PAR}." ;;
+        *)
+            KEY="$PAR" ;;
+    esac
+    shift
+done
+
+REMOTE_UPM_BIN=${REMOTE_UPM_BIN:-"upm"}
+[ -r "$CONFFILE" ] && source "$CONFFILE"
+[ -z "$RUPM_HOST" ] && die 2 "Remote host not given."
+
+[ "$RCMD" != "ls" ] && [ -z "$KEY" ] \
+    && die 2 "No key given."
+[ "$RCMD" = "ls" ] && [ -n "$KEY" ] \
+    && die 2 "Key argument given with '$(basename $0) ls'."
+
+[ -t 0 ] && stty -echo
+# printf removes newline
+printf "%s" "$(ssh ${RUPM_HOST} ${REMOTE_UPM_BIN} -o -p ${RCMD} ${KEY})" \
+    | $OUTPUT
+[ -t 0 ] && stty echo
+
+if [ "$OUTPUT" = "xclip_output" ] ; then
+    echo "Output sent to clipboard." >&2
+else
+    echo "" >&2
+fi
