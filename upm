@@ -127,14 +127,28 @@ list_keys ()
         }"
 }
 
+# Places the input from stdin to clipboard with xclip. Removes the input
+# from clipboard after $CLEARTIME seconds and allows $PASTES pastes.
+xclip_output ()
+{
+    local CLEARTIME PASTES PWSHA
+    CLEARTIME=30
+    PASTES=2
+
+    PWSHA=$(cat | xclip -i -f -loops $PASTES | sha256sum)
+    ( sleep $CLEARTIME ; \
+        [ "$PWSHA" = "$(xclip -o 2> /dev/null | sha256sum)" ] \
+        && echo -n "" | xclip -i ) & \
+        disown
+}
+
 
 [ $# -le 4 ] && [ $# -ge 1 ] || die 1 "Wrong number of arguments"
 [ -z "$UPMFILE" ] && [ -r "$CONFFILE" ] && source "$CONFFILE"
 [ -f "$UPMFILE" ] || die 1 "Vault file '${UPMFILE}' not found."
 
 ACTION=get_password
-XCLIP_CMD="xclip -i"
-OUTPUT="$XCLIP_CMD"
+OUTPUT="xclip_output"
 PASSPHRASE_ARGS=""
 while [ $# -gt 0 ] ; do
     PAR=$1
@@ -149,7 +163,7 @@ while [ $# -gt 0 ] ; do
         -o) # output to stdout
             OUTPUT=cat ;;
         -c) # output to xclip (default)
-            OUTPUT="$XCLIP_CMD" ;;
+            OUTPUT=xclip_output ;;
         -p) # get gpg passphrase from stdin
             PASSPHRASE_ARGS="-q --batch --passphrase-fd 0"
             if $(gpg --dump-options | grep -q pinentry-mode) ; then
@@ -194,7 +208,7 @@ fi
     && echo "Warning: Extra lines in record for key '$KEY'" >&2
 [ ${PIPE_EXITS[1]} -eq 3 ] && die 5 "key '$KEY' not found"
 
-if [ "$OUTPUT" = "$XCLIP_CMD" ] ; then
+if [ "$OUTPUT" = "xclip_output" ] ; then
     echo "Output sent to clipboard." >&2
 else
     [ "$ACTION" != "list_keys" ] && echo "" >&2
