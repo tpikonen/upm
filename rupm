@@ -2,6 +2,42 @@
 
 CONFFILE="$HOME/.config/upm/upm.conf"
 
+
+# usage $EXITCODE $MESSAGE
+# Print usage and die() with the given message and exit code.
+usage ()
+{
+    cat << EOF >&2
+Usage:
+    $(basename $0) [-o | -c] [-h <hostname>] [-b <command>] [<key> | pass <key> | user <key> | ls]
+
+Remote access to upm, an ultra-minimalistic password manager.
+
+Commands:
+    pass <key>  (Default) Get password corresponding to the key.
+                If just the key is given, this is the default.
+    user <key>  Get the username corresponding to the key.
+    ls          List all keys in vault. Outputs to stdout.
+
+Options:
+    -h <hostname>   Run upm with ssh in host <hostname>.
+                    If this option is not given, the value of variable
+                    'RUPM_HOST' from the environment or configuration
+                    file is used.
+    -b <command>    Use <command> as the upm binary in the remote host,
+                    e.g. '~/bin/upm'.
+                    If this option is not given, the value of variable
+                    'REMOTE_UPM_BIN' from the environment or configuration
+                    file is used.
+    -c              Output to xclip (default).
+    -o              Output to standard output.
+
+Uses configuration from '$CONFFILE' if it exists.
+EOF
+    echo "" >&2
+    die "$1" "$2"
+}
+
 # die $EXITCODE $MESSAGE
 # Print a message and exit
 die ()
@@ -24,7 +60,7 @@ xclip_output ()
         disown
 }
 
-[ $# -le 4 ] && [ $# -ge 1 ] || die 1 "Wrong number of arguments"
+[ $# -le 4 ] && [ $# -ge 1 ] || usage 1 "Error: Wrong number of arguments"
 
 RCMD=pass
 OUTPUT="xclip_output"
@@ -47,7 +83,7 @@ while [ $# -gt 0 ] ; do
         -c) # output to xclip (default)
             OUTPUT="xclip_output" ;;
         -*)
-            die 1 "Unknown option ${PAR}." ;;
+            usage 1 "Error: Unknown option ${PAR}." ;;
         *)
             KEY="$PAR" ;;
     esac
@@ -56,12 +92,12 @@ done
 
 REMOTE_UPM_BIN=${REMOTE_UPM_BIN:-"upm"}
 [ -r "$CONFFILE" ] && source "$CONFFILE"
-[ -z "$RUPM_HOST" ] && die 2 "Remote host not given."
+[ -z "$RUPM_HOST" ] && usage 2 "Error: Remote host not given."
 
 [ "$RCMD" != "ls" ] && [ -z "$KEY" ] \
-    && die 2 "No key given."
+    && usage 2 "Error: No key given."
 [ "$RCMD" = "ls" ] && [ -n "$KEY" ] \
-    && die 2 "Key argument given with '$(basename $0) ls'."
+    && usage 2 "Error: Key argument given with '$(basename $0) ls'."
 
 [ -t 0 ] && stty -echo
 # printf removes newline
