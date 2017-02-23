@@ -3,6 +3,34 @@
 
 CONFFILE="$HOME/.config/upm/upm.conf"
 
+
+# usage $EXITCODE $MESSAGE
+# Print usage and die() with the given message and exit code.
+usage ()
+{
+    cat << EOF >&2
+Usage:
+    $(basename $0) [-o | -c] [-p] [<key> | pass <key> | user <key> | ls]
+
+An ultra-minimalistic password manager.
+
+Commands:
+    pass <key>  (Default) Get password corresponding to the key.
+                If just the key is given, this is the default.
+    user <key>  Get the username corresponding to the key.
+    ls          List all keys in vault. Outputs to stdout.
+
+Options:
+    -p      Get gpg passphrase from standard input.
+    -c      Output to xclip (default).
+    -o      Output to standard output.
+
+Uses configuration from '$CONFFILE' if it exists.
+EOF
+    echo "" >&2
+    die "$1" "$2"
+}
+
 # die $EXITCODE $MESSAGE
 # Print a message and exit with a given exit code.
 die ()
@@ -143,7 +171,7 @@ xclip_output ()
 }
 
 
-[ $# -le 4 ] && [ $# -ge 1 ] || die 1 "Wrong number of arguments"
+[ $# -le 4 ] && [ $# -ge 1 ] || usage 1 "Error: Wrong number of arguments"
 [ -z "$UPMFILE" ] && [ -r "$CONFFILE" ] && source "$CONFFILE"
 [ -f "$UPMFILE" ] || die 1 "Vault file '${UPMFILE}' not found."
 
@@ -171,7 +199,7 @@ while [ $# -gt 0 ] ; do
             fi
             ;;
         -*)
-            die 1 "Unknown option ${PAR}."
+            usage 1 "Error: Unknown option '${PAR}'."
             ;;
         *)
             KEY="$PAR" ;;
@@ -180,13 +208,12 @@ while [ $# -gt 0 ] ; do
 done
 
 [ "$ACTION" != "list_keys" ] && [ -z "$KEY" ] \
-    && die 2 "No key given."
+    && usage 2 "Error: No key given."
 [ "$ACTION" = "list_keys" ] && [ -n "$KEY" ] \
-    && die 2 "Key argument given with '$(basename $0) ls'."
+    && usage 2 "Error: Key argument given with '$(basename $0) ls'."
 
 [ -n "$PASSPHRASE_ARGS" ] && echo -n "Enter vault passphrase: " >&2
 [ -t 0 ] && stty -echo
-declare -a GPG_EXIT
 gpg -d ${PASSPHRASE_ARGS} ${UPMFILE} 2> /dev/null \
     | ${ACTION} "$KEY" \
     | $OUTPUT
@@ -200,9 +227,9 @@ PIPE_EXITS=("${PIPESTATUS[@]}")
 # check action exit status
 if [ ${PIPE_EXITS[1]} -eq 0 ] ; then
     [ "$ACTION" = "get_password" ] \
-        && die 5 "no password found for key '$KEY'"
+        && die 5 "No password found for key '$KEY'"
     [ "$ACTION" = "get_user" ] \
-        && die 5 "no username found for key '$KEY'"
+        && die 5 "No username found for key '$KEY'"
 fi
 [ ${PIPE_EXITS[1]} -eq 2 ] \
     && echo "Warning: Extra lines in record for key '$KEY'" >&2
