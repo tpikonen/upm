@@ -213,8 +213,8 @@ done
     && usage 2 "Error: No key given."
 [ "$ACTION" = "list_keys" ] && [ -n "$KEY" ] \
     && usage 2 "Error: Key argument given with '$(basename $0) ls'."
-[ "$OUTPUT" = "xclip_output" ] && xclip -h &> /dev/null \
-    || die 1 "$(basename $0) requires xclip for clipboard output."
+[ "$OUTPUT" = "xclip_output" ] && ! xclip -h &> /dev/null \
+    && die 1 "$(basename $0) requires xclip for clipboard output."
 
 [ -n "$PASSPHRASE_ARGS" ] && echo -n "Enter vault passphrase: " >&2
 [ -t 0 ] && stty -echo

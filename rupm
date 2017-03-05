@@ -97,8 +97,8 @@ REMOTE_UPM_BIN=${REMOTE_UPM_BIN:-"upm"}
     && usage 2 "Error: No key given."
 [ "$RCMD" = "ls" ] && [ -n "$KEY" ] \
     && usage 2 "Error: Key argument given with '$(basename $0) ls'."
-[ "$OUTPUT" = "xclip_output" ] && xclip -h &> /dev/null \
-    || die 1 "$(basename $0) requires xclip for clipboard output."
+[ "$OUTPUT" = "xclip_output" ] && ! xclip -h &> /dev/null \
+    && die 1 "$(basename $0) requires xclip for clipboard output."
 
 [ -t 0 ] && stty -echo
 # printf removes newline
