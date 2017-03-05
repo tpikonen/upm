@@ -55,15 +55,16 @@ get_password ()
     local PWKEY
     PWKEY="$1"
     cleanup | sed -n -E "
-        1 b match           # match first line
-        $ q 3               # match end of file
+        1 b blanks          # handle first line
+        $ q 3               # handle end of file
+        /^\S+/ d
+        :blanks
         /^\s*$/ {
             :eatws
             n
             /^\s*$/ b eatws
             b match
             }
-        /^\S+/ d
         : match
         /^${PWKEY}/ {
             $ q 0
@@ -99,15 +100,16 @@ get_user ()
     local PWKEY
     PWKEY="$1"
     cleanup | sed -n -E "
-        1 b match           # match first line
-        $ q 3               # match end of file
+        1 b blanks          # handle first line
+        $ q 3               # handle end of file
+        /^\S+/ d
+        :blanks
         /^\s*$/ {
             :eatws
             n
             /^\s*$/ b eatws
             b match
             }
-        /^\S+/ d
         : match
         /^${PWKEY}/ {
             $ q 0
