@@ -102,10 +102,12 @@ REMOTE_UPM_BIN=${REMOTE_UPM_BIN:-"upm"}
     && die 1 "$(basename $0) requires xclip for clipboard output."
 
 [ -t 0 ] && stty -echo
-# printf removes newline
-printf "%s" "$(ssh ${RUPM_HOST} ${REMOTE_UPM_BIN} -o -p ${RCMD} ${KEY})" \
+ssh ${RUPM_HOST} ${REMOTE_UPM_BIN} -o -p ${RCMD} ${KEY} | tr -d \\n \
     | $OUTPUT
+UPM_EXIT=("${PIPESTATUS[0]}")
 [ -t 0 ] && stty echo
+
+[ "${UPM_EXIT}" = "0" ] || exit "${UPM_EXIT}"
 
 if [ "$OUTPUT" = "xclip_output" ] ; then
     echo "Output sent to clipboard." >&2
