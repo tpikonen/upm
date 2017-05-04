@@ -65,6 +65,7 @@ xclip_output ()
 
 RCMD=pass
 OUTPUT="xclip_output"
+FILTER="tr -d \\n"
 while [ $# -gt 0 ] ; do
     PAR=$1
     case $PAR in
@@ -74,6 +75,7 @@ while [ $# -gt 0 ] ; do
             RCMD=user ;;
         ls) # get username
             RCMD=ls
+            FILTER=cat
             OUTPUT=cat ;;
         -h) # remote host
             RUPM_HOST="$PAR" ;;
@@ -102,7 +104,7 @@ REMOTE_UPM_BIN=${REMOTE_UPM_BIN:-"upm"}
     && die 1 "$(basename $0) requires xclip for clipboard output."
 
 [ -t 0 ] && stty -echo
-ssh ${RUPM_HOST} ${REMOTE_UPM_BIN} -o -p ${RCMD} ${KEY} | tr -d \\n \
+ssh ${RUPM_HOST} ${REMOTE_UPM_BIN} -o -p ${RCMD} ${KEY} | $FILTER \
     | $OUTPUT
 UPM_EXIT=("${PIPESTATUS[0]}")
 [ -t 0 ] && stty echo
