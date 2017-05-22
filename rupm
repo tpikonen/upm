@@ -113,6 +113,6 @@ UPM_EXIT=("${PIPESTATUS[0]}")
 
 if [ "$OUTPUT" = "xclip_output" ] ; then
     echo "Output sent to clipboard." >&2
-else
+elif [ "$OUTPUT" = "cat" ] && [ "$RCMD" != "ls" ]; then
     echo "" >&2
 fi

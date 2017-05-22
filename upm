@@ -243,6 +243,7 @@ fi
 
 if [ "$OUTPUT" = "xclip_output" ] ; then
     echo "Output sent to clipboard." >&2
-else
-    [ "$ACTION" != "list_keys" ] && echo "" >&2
+elif [ "$OUTPUT" = "cat" ] && [ "$ACTION" != "list_keys" ]; then
+    # Output newline for compatibility with msmtp etc.
+    echo ""
 fi
