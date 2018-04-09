@@ -1,0 +1,17 @@
+V/5ESMI3lfBsM
+# vim: set nowrap foldmethod=expr foldexpr=getline(v\:lnum)=~'^\\s*$'&&getline(v\:lnum+1)=~'\\S'?'<1'\:1:
+# A well formed vault file
+
+test
+user
+pass
+
+another
+pass2
+
+third
+john
+s3kr1T
+
+# end
+kIuZrlZ+MdYz
