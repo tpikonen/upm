@@ -47,18 +47,20 @@ cleanup ()
     head -n -1 | tail -n +2 | grep -v '^#'
 }
 
+
 # Exit codes:
-#   0: record found, but no password
-#   1: password from 2 or 3 line record
-#   2: password from line 3 from record with >3 lines
-#   3: record not found
+#   0: password from 3 line record
+#   1: password from 2 line record
+#   2: password from record with >3 lines
+#   3: record found, but no username or password (1 line record)
+#   4: record not found
 get_password ()
 {
     local PWKEY
     PWKEY="$1"
     cleanup | sed -n -E "
         1 b blanks          # handle first line
-        $ q 3               # handle end of file
+        $ q 4               # handle end of file
         /^\S+/ d
         :blanks
         /^\s*$/ {
@@ -69,12 +71,12 @@ get_password ()
             }
         : match
         /^${PWKEY}/ {
-            $ q 0
+            $ q 3
             n
-            /^\s*$/ q 0         # empty line after key
+            /^\s*$/ q 3         # empty line after key
             h
             n
-            /^\s*$/ b output    # only one non-empty line after key = password
+            /^\s*$/ b twoline   # only one non-empty line after key = password
             h
             n
             /^\s*$/ b output    # empty line after 3rd line -> 3rd line = pw
@@ -82,28 +84,33 @@ get_password ()
             :output
             x
             p
+            q 0
+            :twoline            # 2 line record, output but change exit code
+            x
+            p
             q 1
-            :malformed          # malformed record, output but change exit code
+            :malformed          # > 3 line record, output but change exit code
             x
             p
             q 2
         }
-        $ q 3" | tr -d '\n'
+        $ q 4" | tr -d '\n'
     return ${PIPESTATUS[1]}
 }
 
 # Exit codes:
-#   0: record found, but no username
-#   1: username from a 3 line record
-#   2: username from line 3 from record with >3 lines
-#   3: record not found
+#   0: username from 3 line record
+#   1: record found, but no username (2 line record)
+#   2: username from record with >3 lines
+#   3: record found, but no username or password (1 line record)
+#   4: record not found
 get_user ()
 {
     local PWKEY
     PWKEY="$1"
     cleanup | sed -n -E "
         1 b blanks          # handle first line
-        $ q 3               # handle end of file
+        $ q 4               # handle end of file
         /^\S+/ d
         :blanks
         /^\s*$/ {
@@ -114,25 +121,25 @@ get_user ()
             }
         : match
         /^${PWKEY}/ {
-            $ q 0
+            $ q 3
             n
             h
-            /^\s*$/ q 0         # empty line after key
+            /^\s*$/ q 3         # empty line after key
             n
-            /^\s*$/ q 0         # empty line after key
+            /^\s*$/ q 1         # empty 2nd line after key
             n
             /^\s*$/ b output    # two non-empty lines after key = ok
             /^.+/ b malformed   # more than three non-empty non-comment lines
             :output
             x
             p
-            q 1
-            :malformed          # malformed record, output but change exit code
+            q 0
+            :malformed          # > 3 line record, output but change exit code
             x
             p
             q 2
         }
-        $ q 3" | tr -d '\n'
+        $ q 4" | tr -d '\n'
     return ${PIPESTATUS[1]}
 }
 
@@ -212,6 +219,7 @@ list_keys ()
             d
         }"
 }
+
 
 # Places the input from stdin to clipboard with xclip. Removes the input
 # from clipboard after $CLEARTIME seconds and allows $PASTES pastes.
@@ -310,19 +318,22 @@ PIPE_EXITS=("${PIPESTATUS[@]}")
 #echo ${PIPE_EXITS[@]}
 
 # check GPG exit status
-[ ${PIPE_EXITS[0]} -ne 0 ] && die 5 "gpg: decrypt failed."
+[ "${PIPE_EXITS[0]}" -ne 0 ] && die 5 "gpg: decrypt failed."
 
 # check action exit status
-if [ ${PIPE_EXITS[1]} -eq 0 ] ; then
-    [ "$ACTION" = "get_password" ] \
-        && die 5 "No password found for key '$KEY'"
-    [ "$ACTION" = "get_user" ] \
-        && die 5 "No username found for key '$KEY'"
-fi
-[ ${PIPE_EXITS[1]} -eq 2 ] \
+# Key not found
+[ "${PIPE_EXITS[1]}" -eq 4 ] && die 5 "key '$KEY' not found"
+# 1 line record
+[ "${PIPE_EXITS[1]}" -eq 3 ] \
+        && die 5 "No username or password found for key '$KEY'"
+# >3 line record
+[ "${PIPE_EXITS[1]}" -eq 2 ] \
     && echo "Warning: Extra lines in record for key '$KEY'" >&2
-[ ${PIPE_EXITS[1]} -eq 3 ] && die 5 "key '$KEY' not found"
-[ ${PIPE_EXITS[1]} -eq 4 ] && echo "Warning: Extra lines in record for key '$KEY'" >&2
+# 2 line record
+[ "${PIPE_EXITS[1]}" -eq 1 ] && [ "$ACTION" = "get_user" ] \
+        && die 5 "No username found for key '$KEY'"
+[ "${PIPE_EXITS[1]}" -eq 1 ] && [ "$ACTION" = "get_both" ] \
+        && echo "Empty username found for key '$KEY'" >&2
 
 if [ "$OUTPUT" = "xclip_output" ] || [ "$OUTPUT" = "xclip_double_output" ]; then
     echo "Output sent to clipboard." >&2
