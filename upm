@@ -264,96 +264,105 @@ xclip_double_output ()
 }
 
 
-[ $# -le 4 ] && [ $# -ge 1 ] || usage 1 "Error: Wrong number of arguments"
-[ -z "$UPMFILE" ] && [ -r "$CONFFILE" ] && source "$CONFFILE"
-[ -f "$UPMFILE" ] || die 1 "Vault file '${UPMFILE}' not found."
-gpg --version | head -1 | grep -q '2\.1' \
-    || die 1 "$(basename $0) requires GnuPG 2.1."
+main ()
+{
+    [ $# -le 4 ] && [ $# -ge 1 ] || usage 1 "Error: Wrong number of arguments"
+    [ -z "$UPMFILE" ] && [ -r "$CONFFILE" ] && source "$CONFFILE"
+    [ -f "$UPMFILE" ] || die 1 "Vault file '${UPMFILE}' not found."
+    gpg --version | head -1 | grep -q '2\.1' \
+        || die 1 "$(basename $0) requires GnuPG 2.1."
 
-ACTION=get_password
-OUTPUT="xclip_output"
-PASSPHRASE_ARGS=""
-while [ $# -gt 0 ] ; do
-    PAR=$1
-    case $PAR in
-        pass) # get password (default)
-            ACTION=get_password ;;
-        user) # get username
-            ACTION=get_user ;;
-        both) # get both user and password
-            ACTION=get_both ;;
-        ls) # list keys
-            ACTION=list_keys
-            OUTPUT=cat ;;
-        -o) # output to stdout
-            OUTPUT=cat ;;
-        -c) # output to xclip (default)
-            OUTPUT=xclip_output ;;
-        -p) # get gpg passphrase from stdin
-            PASSPHRASE_ARGS="-q --batch --passphrase-fd 0"
-            if $(gpg --dump-options | grep -q pinentry-mode) ; then
-                PASSPHRASE_ARGS="${PASSPHRASE_ARGS} --pinentry-mode loopback"
-            fi
-            ;;
-        --no-crypt) # For testing
-            UPM_NO_CRYPT=1 ;;
-        -*)
-            usage 1 "Error: Unknown option '${PAR}'."
-            ;;
-        *)
-            KEY="$PAR" ;;
-    esac
-    shift
-done
+    ACTION=get_password
+    OUTPUT="xclip_output"
+    PASSPHRASE_ARGS=""
+    while [ $# -gt 0 ] ; do
+        PAR=$1
+        case $PAR in
+            pass) # get password (default)
+                ACTION=get_password ;;
+            user) # get username
+                ACTION=get_user ;;
+            both) # get both user and password
+                ACTION=get_both ;;
+            ls) # list keys
+                ACTION=list_keys
+                OUTPUT=cat ;;
+            -o) # output to stdout
+                OUTPUT=cat ;;
+            -c) # output to xclip (default)
+                OUTPUT=xclip_output ;;
+            -p) # get gpg passphrase from stdin
+                PASSPHRASE_ARGS="-q --batch --passphrase-fd 0"
+                if $(gpg --dump-options | grep -q pinentry-mode) ; then
+                    PASSPHRASE_ARGS="${PASSPHRASE_ARGS} --pinentry-mode loopback"
+                fi
+                ;;
+            --no-crypt) # For testing
+                UPM_NO_CRYPT=1 ;;
+            -*)
+                usage 1 "Error: Unknown option '${PAR}'."
+                ;;
+            *)
+                KEY="$PAR" ;;
+        esac
+        shift
+    done
 
-[ "$ACTION" != "list_keys" ] && [ -z "$KEY" ] \
-    && usage 2 "Error: No key given."
-[ "$ACTION" = "list_keys" ] && [ -n "$KEY" ] \
-    && usage 2 "Error: Key argument given with '$(basename $0) ls'."
-[ "$OUTPUT" = "xclip_output" ] && ! xclip -h &> /dev/null \
-    && die 1 "$(basename $0) requires xclip for clipboard output."
+    [ "$ACTION" != "list_keys" ] && [ -z "$KEY" ] \
+        && usage 2 "Error: No key given."
+    [ "$ACTION" = "list_keys" ] && [ -n "$KEY" ] \
+        && usage 2 "Error: Key argument given with '$(basename $0) ls'."
+    [ "$OUTPUT" = "xclip_output" ] && ! xclip -h &> /dev/null \
+        && die 1 "$(basename $0) requires xclip for clipboard output."
 
-if [ "$ACTION" = "get_both" ] && [ $OUTPUT = "xclip_output" ]; then
-    OUTPUT="xclip_double_output"
-fi
+    if [ "$ACTION" = "get_both" ] && [ $OUTPUT = "xclip_output" ]; then
+        OUTPUT="xclip_double_output"
+    fi
 
-[ -n "$PASSPHRASE_ARGS" ] && echo -n "Enter vault passphrase: " >&2
-[ -t 0 ] && stty -echo
-if [ "$UPM_NO_CRYPT" = 1 ]; then # testing
-    cat ${UPMFILE} \
-        | ${ACTION} "$KEY" \
-        | $OUTPUT
+    [ -n "$PASSPHRASE_ARGS" ] && echo -n "Enter vault passphrase: " >&2
+    [ -t 0 ] && stty -echo
+    if [ "$UPM_NO_CRYPT" = 1 ]; then # testing
+        cat ${UPMFILE} \
+            | ${ACTION} "$KEY" \
+            | $OUTPUT
+    else
+        gpg -d ${PASSPHRASE_ARGS} ${UPMFILE} 2> /dev/null \
+            | ${ACTION} "$KEY" \
+            | $OUTPUT
+    fi
+    PIPE_EXITS=("${PIPESTATUS[@]}")
+    [ -n "$PASSPHRASE_ARGS" ] && echo "" >&2
+    [ -t 0 ] && stty echo
+    #echo ${PIPE_EXITS[@]}
+
+    # check GPG exit status
+    [ "${PIPE_EXITS[0]}" -ne 0 ] && die 5 "gpg: decrypt failed."
+
+    # check action exit status
+    # Key not found
+    [ "${PIPE_EXITS[1]}" -eq 4 ] && die 5 "key '$KEY' not found"
+    # 1 line record
+    [ "${PIPE_EXITS[1]}" -eq 3 ] \
+            && die 5 "No username or password found for key '$KEY'"
+    # >3 line record
+    [ "${PIPE_EXITS[1]}" -eq 2 ] \
+        && echo "Warning: Extra lines in record for key '$KEY'" >&2
+    # 2 line record
+    [ "${PIPE_EXITS[1]}" -eq 1 ] && [ "$ACTION" = "get_user" ] \
+            && die 5 "No username found for key '$KEY'"
+    [ "${PIPE_EXITS[1]}" -eq 1 ] && [ "$ACTION" = "get_both" ] \
+            && echo "Empty username found for key '$KEY'" >&2
+
+    if [ "$OUTPUT" = "xclip_output" ] || [ "$OUTPUT" = "xclip_double_output" ]; then
+        echo "Output sent to clipboard." >&2
+    elif [ "$OUTPUT" = "cat" ] && [ "$ACTION" != "list_keys" ]; then
+        # Output newline for compatibility with msmtp etc.
+        echo ""
+    fi
+}
+
+if [ "${0:(-4)}" = "/upm" ]; then
+    main "$@"
 else
-    gpg -d ${PASSPHRASE_ARGS} ${UPMFILE} 2> /dev/null \
-        | ${ACTION} "$KEY" \
-        | $OUTPUT
-fi
-PIPE_EXITS=("${PIPESTATUS[@]}")
-[ -n "$PASSPHRASE_ARGS" ] && echo "" >&2
-[ -t 0 ] && stty echo
-#echo ${PIPE_EXITS[@]}
-
-# check GPG exit status
-[ "${PIPE_EXITS[0]}" -ne 0 ] && die 5 "gpg: decrypt failed."
-
-# check action exit status
-# Key not found
-[ "${PIPE_EXITS[1]}" -eq 4 ] && die 5 "key '$KEY' not found"
-# 1 line record
-[ "${PIPE_EXITS[1]}" -eq 3 ] \
-        && die 5 "No username or password found for key '$KEY'"
-# >3 line record
-[ "${PIPE_EXITS[1]}" -eq 2 ] \
-    && echo "Warning: Extra lines in record for key '$KEY'" >&2
-# 2 line record
-[ "${PIPE_EXITS[1]}" -eq 1 ] && [ "$ACTION" = "get_user" ] \
-        && die 5 "No username found for key '$KEY'"
-[ "${PIPE_EXITS[1]}" -eq 1 ] && [ "$ACTION" = "get_both" ] \
-        && echo "Empty username found for key '$KEY'" >&2
-
-if [ "$OUTPUT" = "xclip_output" ] || [ "$OUTPUT" = "xclip_double_output" ]; then
-    echo "Output sent to clipboard." >&2
-elif [ "$OUTPUT" = "cat" ] && [ "$ACTION" != "list_keys" ]; then
-    # Output newline for compatibility with msmtp etc.
-    echo ""
+    true
 fi
