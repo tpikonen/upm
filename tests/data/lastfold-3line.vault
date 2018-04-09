@@ -1,0 +1,9 @@
+V/5ESMI3lfBsM
+# vim: set nowrap foldmethod=expr foldexpr=getline(v\:lnum)=~'^\\s*$'&&getline(v\:lnum+1)=~'\\S'?'<1'\:1:
+# A vault with a 3 line record in the last fold
+
+test
+user
+pass
+# end
+kIuZrlZ+MdYz
