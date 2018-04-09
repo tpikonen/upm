@@ -295,6 +295,8 @@ while [ $# -gt 0 ] ; do
                 PASSPHRASE_ARGS="${PASSPHRASE_ARGS} --pinentry-mode loopback"
             fi
             ;;
+        --no-crypt) # For testing
+            UPM_NO_CRYPT=1 ;;
         -*)
             usage 1 "Error: Unknown option '${PAR}'."
             ;;
@@ -317,9 +319,15 @@ fi
 
 [ -n "$PASSPHRASE_ARGS" ] && echo -n "Enter vault passphrase: " >&2
 [ -t 0 ] && stty -echo
-gpg -d ${PASSPHRASE_ARGS} ${UPMFILE} 2> /dev/null \
-    | ${ACTION} "$KEY" \
-    | $OUTPUT
+if [ "$UPM_NO_CRYPT" = 1 ]; then # testing
+    cat ${UPMFILE} \
+        | ${ACTION} "$KEY" \
+        | $OUTPUT
+else
+    gpg -d ${PASSPHRASE_ARGS} ${UPMFILE} 2> /dev/null \
+        | ${ACTION} "$KEY" \
+        | $OUTPUT
+fi
 PIPE_EXITS=("${PIPESTATUS[@]}")
 [ -n "$PASSPHRASE_ARGS" ] && echo "" >&2
 [ -t 0 ] && stty echo
