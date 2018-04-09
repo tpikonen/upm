@@ -75,9 +75,11 @@ get_password ()
             n
             /^\s*$/ q 3         # empty line after key
             h
+            $ b twoline
             n
             /^\s*$/ b twoline   # only one non-empty line after key = password
             h
+            $ b output
             n
             /^\s*$/ b output    # empty line after 3rd line -> 3rd line = pw
             /^.+/ b malformed   # more than three non-empty non-comment lines
@@ -123,10 +125,12 @@ get_user ()
         /^${PWKEY}/ {
             $ q 3
             n
-            h
             /^\s*$/ q 3         # empty line after key
+            $ b twoline
+            h
             n
             /^\s*$/ q 1         # empty 2nd line after key
+            $ b output
             n
             /^\s*$/ b output    # two non-empty lines after key = ok
             /^.+/ b malformed   # more than three non-empty non-comment lines
@@ -134,6 +138,8 @@ get_user ()
             x
             p
             q 0
+            :twoline            # 2 line record, no username, exit
+            q 1
             :malformed          # > 3 line record, output but change exit code
             x
             p
@@ -171,9 +177,11 @@ get_both ()
             n
             h
             /^\s*$/ q 3         # empty line after key
+            $ b twoline
             n
-            /^\s*$/ b nouser    # empty 2nd line after key
+            /^\s*$/ b twoline   # empty 2nd line after key
             H
+            $ b output
             n
             /^\s*$/ b output    # two non-empty lines after key = ok
             /^.+/ b malformed   # more than three non-empty non-comment lines
@@ -185,7 +193,7 @@ get_both ()
             x
             p
             q 2
-            :nouser             # No user in record, output empty line + pw
+            :twoline            # No user in record, output empty line + pw
             s/^.*$//            # Clear pattern space
             p
             x
