@@ -29,9 +29,9 @@ executable.
 Install the patched vim-gnupg from https://github.com/tpikonen/vim-gnupg
 to vim plugin directory (usually `~/.vim/plugin`).
 
-If you want to use the remote access version rupm, copy it to the
-$PATH of the local system, and install upm and the patched vim-gnupg
-to the remote system.
+If you want to use the remote access version rupm, copy it along with upm to
+the $PATH of the local system, and install upm and, optionally, the patched
+vim-gnupg to the remote system.
 
 ## Usage
 
@@ -42,9 +42,10 @@ consecutive lines. The first line contains the key to the record (the name
 of a website for example), the second line has the username and
 the third line contains the password. An empty line starts a new record.
 
-In addition, two-line records containing only the key on the first line
-and the password on the second (and last) line are also supported.
-Naturally, trying to read a username from such a record results in an error.
+In addition, two-line records containing only the key on the first line and
+the password on the second (and last) line are also supported. Trying to read
+a username from such a record results either in an error (with `upm user`
+command) or an empty username (with `upm both`).
 
 Lines beginning with a comment character `#` are ignored.
 
@@ -56,9 +57,9 @@ of the file are ignored by upm and can be used for long random strings, i.e.
 random padding. The random lines are regenerated on every write by the patched
 version of vim-gnupg in order to make breaking the crypto of multiple, nearly
 identical copies of the password vault harder.  The rationale for this is that
-if you store your password vault file in a version control system, the
-attacker who can access the current copy of the vault file likely also has
-access to the older versions.
+if you store your password vault file in a version control system, an attacker
+who can access the current copy of the vault file likely also has access to
+the older versions.
 
 ### Creating a password vault with vim
 
@@ -69,9 +70,9 @@ vim vault.rpad
 ```
 
 Note that the extension needs to be `.rpad` in order to make the regeneration
-of random padding work automatically. If you do not want to use random padding,
-use the extension `.gpg` to make the encryption and decryption automatic with
-with vim-gnupg.
+of random padding work automatically. If you do not want to use random
+padding, use the extension `.gpg` to make the encryption and decryption
+automatic with with vim-gnupg.
 
 Give as recipient the key you want to use for encrypting your vault.
 
@@ -126,7 +127,7 @@ there is an error in the parameters given:
 ```
 $ upm
 Usage:
-    upm [-o | -c] [-p] [<key> | pass <key> | user <key> | ls]
+    upm [-o | -c] [-p] [<key> | pass <key> | user <key> | both <key> | ls]
 
 An ultra-minimalistic password manager.
 
@@ -134,6 +135,8 @@ Commands:
     pass <key>  (Default) Get password corresponding to the key.
                 If just the key is given, this is the default.
     user <key>  Get the username corresponding to the key.
+    both <key>  Get the username and password, separated by a newline
+                corresponding to the key.
     ls          List all keys in vault. Outputs to stdout.
 
 Options:
@@ -146,17 +149,20 @@ Uses configuration from '/home/tpikonen/.config/upm/upm.conf' if it exists.
 Error: Wrong number of arguments
 ```
 
-To summarize, you can ask upm for a password to a given site with
-`upm pass site` (or just `upm site`), username to a given site with
-`upm user site` or the list of keys in the vault with `upm ls`.
+To summarize, you can ask upm for a password to a given site with `upm pass
+site` (or just `upm site`), username to a given site with `upm user site`,
+username and password  with `upm both` or the list of keys in the vault with
+`upm ls`.
 
-You can also direct the output of 'pass' and 'user' commands to the
+You can also direct the output of 'pass','user' and 'both' commands to the
 clipboard with the `-c` option (this is the default), or
 to the standard output with the `-o` option.
 
-The clipboard output gives by default two pastes and it clears the clipboard
-automatically after 30 seconds, if the selection still contains the password
-or username.
+The clipboard output of 'pass' and 'user' commands gives by default two pastes
+and it clears the clipboard automatically after 30 seconds, if the selection
+still contains the password or username. The username and password from the
+'both' command are output in two consecutive pastes and deleted from the
+clipboard after the paste, or after 30 seconds if no pastes have been made.
 
 ### Using rupm
 
@@ -167,16 +173,16 @@ there and directs the output to xclip or standard output as desired.
 The configuration file at `~/.config/upm/upm.conf` (or the environment)
 has the following configuration variables for rupm
 
-* RUPM_HOST is the default host to log in to
-* REMOTE_UPM_BIN gives the path to the upm command in the remote host
+* `RUPM_HOST` is the default host to log in to
+* `REMOTE_UPM_BIN` gives the path to the upm command in the remote host
 
-Otherwise the use of rupm is very similar to upm itself. Here's the compact
+Otherwise the use of rupm is similar to upm itself. Here's the compact
 usage:
 
 ```
 $ rupm
 Usage:
-    rupm [-o | -c] [-h <hostname>] [-b <command>] [<key> | pass <key> | user <key> | ls]
+    rupm [-o | -c] [-h <hostname>] [-b <command>] [<key> | pass <key> | user <key> | both <key> | ls]
 
 Remote access to upm, an ultra-minimalistic password manager.
 
@@ -184,6 +190,8 @@ Commands:
     pass <key>  (Default) Get password corresponding to the key.
                 If just the key is given, this is the default.
     user <key>  Get the username corresponding to the key.
+    both <key>  Get the username and password, separated by a newline
+                corresponding to the key.
     ls          List all keys in vault. Outputs to stdout.
 
 Options:
