@@ -351,7 +351,7 @@ main ()
     [ "${PIPE_EXITS[1]}" -eq 1 ] && [ "$ACTION" = "get_user" ] \
             && die 5 "No username found for key '$KEY'"
     [ "${PIPE_EXITS[1]}" -eq 1 ] && [ "$ACTION" = "get_both" ] \
-            && echo "Empty username found for key '$KEY'" >&2
+            && printf "\nEmpty username found for key '$KEY'" >&2
 
     if [ "$OUTPUT" = "xclip_output" ] || [ "$OUTPUT" = "xclip_double_output" ]; then
         echo "Output sent to clipboard." >&2

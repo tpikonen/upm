@@ -73,7 +73,7 @@ function no_stdout {
     run no_stdout upm -o both another
     echo "$output"
     [ "$status" -eq 0 ]
-    [ "$output" = "Empty username found for key 'another'" ]
+    [ "$output" = "$(printf '\nEmpty username found for key '\''another'\')" ]
 }
 
 @test "upm pass last " {
