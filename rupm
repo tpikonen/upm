@@ -9,7 +9,7 @@ usage ()
 {
     cat << EOF >&2
 Usage:
-    $(basename $0) [-o | -c] [-h <hostname>] [-b <command>] [<key> | pass <key> | user <key> | ls]
+    $(basename $0) [-o | -c] [-h <hostname>] [-b <command>] [<key> | pass <key> | user <key> | both <key> | ls]
 
 Remote access to upm, an ultra-minimalistic password manager.
 
@@ -17,6 +17,8 @@ Commands:
     pass <key>  (Default) Get password corresponding to the key.
                 If just the key is given, this is the default.
     user <key>  Get the username corresponding to the key.
+    both <key>  Get the username and password, separated by a newline
+                corresponding to the key.
     ls          List all keys in vault. Outputs to stdout.
 
 Options:
@@ -51,7 +53,10 @@ while [ $# -gt 0 ] ; do
             RCMD=pass ;;
         user) # get username
             RCMD=user ;;
-        ls) # get username
+        both) # get username and password
+            RCMD=both
+            FILTER=cat ;;
+        ls) # list keys
             RCMD=ls
             FILTER=cat
             OUTPUT=cat ;;
@@ -81,6 +86,10 @@ REMOTE_UPM_BIN=${REMOTE_UPM_BIN:-"upm"}
 [ "$OUTPUT" = "xclip_output" ] && ! xclip -h &> /dev/null \
     && die 1 "$(basename $0) requires xclip for clipboard output."
 
+if [ "$RCMD" = "both" ] && [ $OUTPUT = "xclip_output" ]; then
+    OUTPUT="xclip_double_output"
+fi
+
 [ -t 0 ] && stty -echo
 ssh ${RUPM_HOST} ${REMOTE_UPM_BIN} -o -p ${RCMD} ${KEY} | $FILTER \
     | $OUTPUT
@@ -89,7 +98,7 @@ UPM_EXIT=("${PIPESTATUS[0]}")
 
 [ "${UPM_EXIT}" = "0" ] || exit "${UPM_EXIT}"
 
-if [ "$OUTPUT" = "xclip_output" ] ; then
+if [ "$OUTPUT" = "xclip_output" ] || [ "$OUTPUT" = "xclip_double_output" ] ; then
     echo "Output sent to clipboard." >&2
 elif [ "$OUTPUT" = "cat" ] && [ "$RCMD" != "ls" ]; then
     echo "" >&2
