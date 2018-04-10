@@ -237,7 +237,7 @@ xclip_output ()
     CLEARTIME=30
     PASTES=2
 
-    PWSHA=$(cat | xclip -i -f -loops $PASTES | sha256sum)
+    PWSHA=$(cat | tr -d '\n' | xclip -i -f -loops $PASTES | sha256sum)
     ( sleep $CLEARTIME ; \
         [ "$PWSHA" = "$(xclip -o 2> /dev/null | sha256sum)" ] \
         && echo -n "" | xclip -i ) & \
