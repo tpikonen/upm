@@ -1,6 +1,6 @@
 #!/bin/bash
 
-UPM_CONFFILE="$HOME/.config/upm/upm.conf"
+source "$(dirname $0)/upm"
 
 
 # usage $EXITCODE $MESSAGE
@@ -38,28 +38,6 @@ EOF
     die "$1" "$2"
 }
 
-# die $EXITCODE $MESSAGE
-# Print a message and exit
-die ()
-{
-    echo "$2" >&2
-    exit $1
-}
-
-# Places the input from stdin to clipboard with xclip. Removes the input
-# from clipboard after $CLEARTIME seconds and allows $PASTES pastes.
-xclip_output ()
-{
-    local CLEARTIME PASTES PWSHA
-    CLEARTIME=30
-    PASTES=2
-
-    PWSHA=$(cat | xclip -i -f -loops $PASTES | sha256sum)
-    ( sleep $CLEARTIME ; \
-        [ "$PWSHA" = "$(xclip -o 2> /dev/null | sha256sum)" ] \
-        && echo -n "" | xclip -i ) & \
-        disown
-}
 
 [ $# -le 4 ] && [ $# -ge 1 ] || usage 1 "Error: Wrong number of arguments"
 
