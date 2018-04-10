@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONFFILE="$HOME/.config/upm/upm.conf"
+UPM_CONFFILE="$HOME/.config/upm/upm.conf"
 
 
 # usage $EXITCODE $MESSAGE
@@ -32,7 +32,7 @@ Options:
     -c              Output to xclip (default).
     -o              Output to standard output.
 
-Uses configuration from '$CONFFILE' if it exists.
+Uses configuration from '$UPM_CONFFILE' if it exists.
 EOF
     echo "" >&2
     die "$1" "$2"
@@ -94,7 +94,7 @@ while [ $# -gt 0 ] ; do
 done
 
 REMOTE_UPM_BIN=${REMOTE_UPM_BIN:-"upm"}
-[ -r "$CONFFILE" ] && source "$CONFFILE"
+[ -r "$UPM_CONFFILE" ] && source "$UPM_CONFFILE"
 [ -z "$RUPM_HOST" ] && usage 2 "Error: Remote host not given."
 [ "$RCMD" != "ls" ] && [ -z "$KEY" ] \
     && usage 2 "Error: No key given."
