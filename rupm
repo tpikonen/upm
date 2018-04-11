@@ -93,7 +93,7 @@ fi
 [ -t 0 ] && stty -echo
 ssh "${RUPM_HOST}" "${REMOTE_UPM_BIN} -o -p ${RCMD} ${KEY}" | $FILTER \
     | $OUTPUT
-UPM_EXIT=("${PIPESTATUS[0]}")
+UPM_EXIT="${PIPESTATUS[0]}"
 [ -t 0 ] && stty echo
 
 [ "${UPM_EXIT}" = "0" ] || exit "${UPM_EXIT}"
