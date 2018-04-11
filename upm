@@ -293,7 +293,7 @@ main ()
                 OUTPUT=xclip_output ;;
             -p) # get gpg passphrase from stdin
                 PASSPHRASE_ARGS="-q --batch --passphrase-fd 0"
-                if $(gpg --dump-options | grep -q pinentry-mode) ; then
+                if gpg --dump-options | grep -q pinentry-mode ; then
                     PASSPHRASE_ARGS="${PASSPHRASE_ARGS} --pinentry-mode loopback"
                 fi
                 ;;
@@ -352,7 +352,7 @@ main ()
     [ "${PIPE_EXITS[1]}" -eq 1 ] && [ "$ACTION" = "get_user" ] \
             && die 5 "No username found for key '$KEY'"
     [ "${PIPE_EXITS[1]}" -eq 1 ] && [ "$ACTION" = "get_both" ] \
-            && printf "\nEmpty username found for key '$KEY'" >&2
+            && printf "\nEmpty username found for key '%s'" "$KEY" >&2
 
     if [ "$OUTPUT" = "xclip_output" ] || [ "$OUTPUT" = "xclip_double_output" ]; then
         echo "Output sent to clipboard." >&2
