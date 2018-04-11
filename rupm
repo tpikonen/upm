@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$(dirname $0)/upm"
+source "$(dirname "$0")/upm"
 
 
 # usage $EXITCODE $MESSAGE
@@ -9,7 +9,7 @@ usage ()
 {
     cat << EOF >&2
 Usage:
-    $(basename $0) [-o | -c] [-h <hostname>] [-b <command>] [<key> | pass <key> | user <key> | both <key> | ls]
+    $(basename "$0") [-o | -c] [-h <hostname>] [-b <command>] [<key> | pass <key> | user <key> | both <key> | ls]
 
 Remote access to upm, an ultra-minimalistic password manager.
 
@@ -82,16 +82,16 @@ REMOTE_UPM_BIN=${REMOTE_UPM_BIN:-"upm"}
 [ "$RCMD" != "ls" ] && [ -z "$KEY" ] \
     && usage 2 "Error: No key given."
 [ "$RCMD" = "ls" ] && [ -n "$KEY" ] \
-    && usage 2 "Error: Key argument given with '$(basename $0) ls'."
+    && usage 2 "Error: Key argument given with '$(basename "$0") ls'."
 [ "$OUTPUT" = "xclip_output" ] && ! xclip -h &> /dev/null \
-    && die 1 "$(basename $0) requires xclip for clipboard output."
+    && die 1 "$(basename "$0") requires xclip for clipboard output."
 
 if [ "$RCMD" = "both" ] && [ $OUTPUT = "xclip_output" ]; then
     OUTPUT="xclip_double_output"
 fi
 
 [ -t 0 ] && stty -echo
-ssh ${RUPM_HOST} ${REMOTE_UPM_BIN} -o -p ${RCMD} ${KEY} | $FILTER \
+ssh "${RUPM_HOST}" "${REMOTE_UPM_BIN} -o -p ${RCMD} ${KEY}" | $FILTER \
     | $OUTPUT
 UPM_EXIT=("${PIPESTATUS[0]}")
 [ -t 0 ] && stty echo

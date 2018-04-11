@@ -10,7 +10,7 @@ usage ()
 {
     cat << EOF >&2
 Usage:
-    $(basename $0) [-o | -c] [-p] [<key> | pass <key> | user <key> | both <key> | ls]
+    $(basename "$0") [-o | -c] [-p] [<key> | pass <key> | user <key> | both <key> | ls]
 
 An ultra-minimalistic password manager.
 
@@ -38,7 +38,7 @@ EOF
 die ()
 {
     echo "$2" >&2
-    exit $1
+    exit "$1"
 }
 
 # Remove first and last line and comment lines from the stream
@@ -97,7 +97,7 @@ get_password ()
             q 2
         }
         $ q 4" | tr -d '\n'
-    return ${PIPESTATUS[1]}
+    return "${PIPESTATUS[1]}"
 }
 
 # Exit codes:
@@ -146,7 +146,7 @@ get_user ()
             q 2
         }
         $ q 4" | tr -d '\n'
-    return ${PIPESTATUS[1]}
+    return "${PIPESTATUS[1]}"
 }
 
 
@@ -201,7 +201,7 @@ get_both ()
             q 1
         }
         $ q 3" | tr '\n' '\r' | sed 's/\r$//' | tr '\r' '\n'
-    return ${PIPESTATUS[1]}
+    return "${PIPESTATUS[1]}"
 }
 
 
@@ -270,7 +270,7 @@ main ()
     [ -z "$UPMFILE" ] && [ -r "$UPM_CONFFILE" ] && source "$UPM_CONFFILE"
     [ -f "$UPMFILE" ] || die 1 "Vault file '${UPMFILE}' not found."
     gpg --version | head -1 | grep -q '2\.1' \
-        || die 1 "$(basename $0) requires GnuPG 2.1."
+        || die 1 "$(basename "$0") requires GnuPG 2.1."
 
     ACTION=get_password
     OUTPUT="xclip_output"
@@ -311,9 +311,9 @@ main ()
     [ "$ACTION" != "list_keys" ] && [ -z "$KEY" ] \
         && usage 2 "Error: No key given."
     [ "$ACTION" = "list_keys" ] && [ -n "$KEY" ] \
-        && usage 2 "Error: Key argument given with '$(basename $0) ls'."
+        && usage 2 "Error: Key argument given with '$(basename "$0") ls'."
     [ "$OUTPUT" = "xclip_output" ] && ! xclip -h &> /dev/null \
-        && die 1 "$(basename $0) requires xclip for clipboard output."
+        && die 1 "$(basename "$0") requires xclip for clipboard output."
 
     if [ "$ACTION" = "get_both" ] && [ $OUTPUT = "xclip_output" ]; then
         OUTPUT="xclip_double_output"
@@ -322,11 +322,12 @@ main ()
     [ -n "$PASSPHRASE_ARGS" ] && echo -n "Enter vault passphrase: " >&2
     [ -t 0 ] && stty -echo
     if [ "$UPM_NO_CRYPT" = 1 ]; then # testing
-        cat ${UPMFILE} \
+        cat "${UPMFILE}" \
             | ${ACTION} "$KEY" \
             | $OUTPUT
     else
-        gpg -d ${PASSPHRASE_ARGS} ${UPMFILE} 2> /dev/null \
+        # shellcheck disable=SC2086
+        gpg -d ${PASSPHRASE_ARGS} "${UPMFILE}" 2> /dev/null \
             | ${ACTION} "$KEY" \
             | $OUTPUT
     fi
