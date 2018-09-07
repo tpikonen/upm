@@ -58,6 +58,7 @@ get_password ()
 {
     local PWKEY
     PWKEY="$1"
+    [ -z "$PWKEY" ] && return 4
     cleanup | sed -n -E "
         1 b blanks          # handle first line
         $ q 4               # handle end of file
@@ -110,6 +111,7 @@ get_user ()
 {
     local PWKEY
     PWKEY="$1"
+    [ -z "$PWKEY" ] && return 4
     cleanup | sed -n -E "
         1 b blanks          # handle first line
         $ q 4               # handle end of file
@@ -160,6 +162,7 @@ get_both ()
 {
     local PWKEY
     PWKEY="$1"
+    [ -z "$PWKEY" ] && return 4
     cleanup | sed -n -E "
         1 b blanks          # handle first line
         $ q 4               # handle end of file
