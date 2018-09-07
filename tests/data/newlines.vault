@@ -1,0 +1,13 @@
+V/5ESMI3lfBsM
+# vim: set nowrap foldmethod=expr foldexpr=getline(v\:lnum)=~'^\\s*$'&&getline(v\:lnum+1)=~'\\S'?'<1'\:1:
+# A vault with a 3 line record in the last fold with 2 newlines before padding.
+# This triggered a bug in get_* where a bad key did not return an error code
+# when there was >1 newlines at the end of file.
+
+test
+user
+pass
+
+
+# end
+kIuZrlZ+MdYz

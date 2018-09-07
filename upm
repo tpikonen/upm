@@ -62,14 +62,15 @@ get_password ()
     cleanup | sed -n -E "
         1 b blanks          # handle first line
         $ q 4               # handle end of file
-        /^\S+/ d
+        /^\S+/ d            # require blank line before key
         :blanks
         /^\s*$/ {
             :eatws
+            $ q 4           # last line is blank
             n
             /^\s*$/ b eatws
             b match
-            }
+        }
         : match
         /^${PWKEY}/ {
             $ q 3
@@ -115,14 +116,15 @@ get_user ()
     cleanup | sed -n -E "
         1 b blanks          # handle first line
         $ q 4               # handle end of file
-        /^\S+/ d
+        /^\S+/ d            # require blank line before key
         :blanks
         /^\s*$/ {
             :eatws
+            $ q 4           # last line is blank
             n
             /^\s*$/ b eatws
             b match
-            }
+        }
         : match
         /^${PWKEY}/ {
             $ q 3
@@ -166,14 +168,15 @@ get_both ()
     cleanup | sed -n -E "
         1 b blanks          # handle first line
         $ q 4               # handle end of file
-        /^\S+/ d
+        /^\S+/ d            # require blank line before key
         :blanks
         /^\s*$/ {
             :eatws
+            $ q 4           # last line is blank
             n
             /^\s*$/ b eatws
             b match
-            }
+        }
         : match
         /^${PWKEY}/ {
             $ q 3
