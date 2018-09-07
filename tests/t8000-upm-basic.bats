@@ -96,20 +96,20 @@ function no_stdout {
     [ "$output" = "$(printf 'john\ns3kr1T')" ]
 }
 
-@test "upm pass nokey" {
+@test "upm pass badkey" {
     run ${UPM} -o pass foo
     echo "$output"
     [ "$status" -eq 5 ]
     [ "$output" = "key 'foo' not found" ]
 }
 
-@test "upm user nokey" {
+@test "upm user badkey" {
     run ${UPM} -o user foo
     [ "$status" -eq 5 ]
     [ "$output" = "key 'foo' not found" ]
 }
 
-@test "upm both nokey" {
+@test "upm both badkey" {
     run ${UPM} -o both foo
     echo "$output"
     [ "$status" -eq 5 ]

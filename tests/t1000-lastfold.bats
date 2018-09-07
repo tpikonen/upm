@@ -102,3 +102,22 @@ test_pipefun()
     [ "$status" = 4 ]
     [ -z "$output" ]
 }
+
+# bad key
+@test "get_password bad key" {
+    run test_pipefun tests/data/lastfold-3line.vault get_password foo
+    [ "$status" = 4 ]
+    [ -z "$output" ]
+}
+
+@test "get_user bad key" {
+    run test_pipefun tests/data/lastfold-3line.vault get_user foo
+    [ "$status" = 4 ]
+    [ -z "$output" ]
+}
+
+@test "get_both bad key" {
+    run test_pipefun tests/data/lastfold-3line.vault get_both foo
+    [ "$status" = 4 ]
+    [ -z "$output" ]
+}
